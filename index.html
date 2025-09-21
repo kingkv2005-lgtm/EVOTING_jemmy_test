@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Admin Login - Voter Info</title>
+  <style>
+    body {
+      font-family: Arial;
+      background: #f5f5f5;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      margin: 0;
+    }
+    .card {
+      background: white;
+      padding: 20px;
+      border-radius: 10px;
+      box-shadow: 0 0 15px rgba(0,0,0,0.2);
+      max-width: 450px;
+      width: 100%;
+      text-align: center;
+    }
+    h2 { margin-bottom: 15px; }
+    input {
+      width: 95%;
+      padding: 10px;
+      margin: 8px 0;
+      border-radius: 5px;
+      border: 1px solid #ccc;
+    }
+    button {
+      padding: 10px 20px;
+      background: #007BFF;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      width: 100%;
+      margin-top: 10px;
+    }
+    button:hover { background: #0056b3; }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 10px;
+    }
+    th, td {
+      text-align: left;
+      padding: 8px;
+      border-bottom: 1px solid #ddd;
+    }
+    th { background: #f0f0f0; width: 35%; }
+    img {
+      width: 150px;
+      height: 150px;
+      border-radius: 8px;
+      object-fit: cover;
+      margin: 10px auto;
+      display: block;
+      border: 1px solid #ccc;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Admin Login Card -->
+  <div class="card" id="loginCard">
+    <h2>Admin Login</h2>
+    <input id="email" placeholder="Admin Email" />
+    <input id="password" type="password" placeholder="Password" />
+    <button id="loginBtn">Login</button>
+  </div>
+
+  <!-- Voter Info Card -->
+  <div class="card" id="voterCard" style="display:none;">
+    <h2>Voter Information</h2>
+    <img id="voterPhoto" src="" alt="Voter Photo">
+    <table id="voterTable"></table>
+  </div>
+
+  <!-- Firebase SDK (compat version) -->
+  <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore-compat.js"></script>
+
+  <script>
+    // Firebase config
+    const firebaseConfig = {
+      apiKey: "AIzaSyARC0sOozRd1K6ygk_XLtiqikJsHE6mXcg",
+      authDomain: "smartevm-1cec6.firebaseapp.com",
+      projectId: "smartevm-1cec6"
+    };
+
+    // Initialize Firebase
+    firebase.initializeApp(firebaseConfig);
+    const auth = firebase.auth();
+    const db = firebase.firestore();
+
+    // Get voterID from URL or default
+    const voterID = new URLSearchParams(window.location.search).get("voterID") || "jemmy";
+
+    const loginCard = document.getElementById("loginCard");
+    const voterCard = document.getElementById("voterCard");
+    const voterTable = document.getElementById("voterTable");
+    const voterPhoto = document.getElementById("voterPhoto");
+
+    document.getElementById("loginBtn").addEventListener("click", async () => {
+      const email = document.getElementById("email").value;
+      const password = document.getElementById("password").value;
+
+      if (!email || !password) { alert("Enter email and password!"); return; }
+
+      try {
+        await auth.signInWithEmailAndPassword(email, password);
+
+        loginCard.style.display = "none";
+        voterCard.style.display = "block";
+
+        const voterRef = db.collection("voters").doc(voterID);
+        const voterSnap = await voterRef.get();
+
+        if (voterSnap.exists) {
+          const data = voterSnap.data();
+
+          // Display voter photo from local folder
+          voterPhoto.src = `images/${voterID}.jpg`;
+          voterPhoto.onerror = () => { voterPhoto.src = "images/default.jpg"; };
+
+          // Fixed order fields
+          const fields = [
+            {label: "Name", value: data.name || "N/A"},
+            {label: "Date of Birth", value: data.dob || "N/A"},
+            {label: "Voter ID", value: data.voterID || data.voterId || "N/A"},
+            {label: "Mobile number", value: data.mobilenumber || "N/A"},
+            {label: "Fingerprint Template", value: data.fingerprint_template || "N/A"}
+          ];
+
+          // Render table
+          let rows = "";
+          fields.forEach(f => { rows += `<tr><th>${f.label}</th><td>${f.value}</td></tr>`; });
+          voterTable.innerHTML = rows;
+
+        } else {
+          voterTable.innerHTML = "<tr><td>No voter found!</td></tr>";
+          voterPhoto.src = "images/default.jpg";
+        }
+
+      } catch (err) {
+        alert("Login failed: " + err.message);
+      }
+    });
+  </script>
+
+</body>
+</html>
